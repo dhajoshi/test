@@ -6,9 +6,9 @@ module "vpc" {
 
   # VPC Basic Details
   name = "${var.prefix}"
-  cidr = "10.5.0.0/16"   
-  azs                 = ["us-east-1a", "us-east-1b"]
-  public_subnets      = ["10.5.0.0/24", "10.5.1.0/24"]
+  cidr = var.vpc_cidr_block   
+  azs                 = var.vpc_availability_zones
+  public_subnets      = var.vpc_public_subnets
 
   public_subnet_tags = {
     Name = "Public subnet"
@@ -18,9 +18,7 @@ module "vpc" {
     Name = "Public gateway"
   }
 
-  tags = {
-    createdBy = "infra-${var.prefix}/base"
-  }
+  tags = local.common_tags
 
   vpc_tags = {
     Name = "${var.prefix}"
