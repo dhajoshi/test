@@ -1,4 +1,4 @@
-# Setup our aws provider
+# Setup our aws provider ( Test workflow )
 variable "region" {
   default = "us-east-1"
 }
