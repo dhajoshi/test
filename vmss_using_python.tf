@@ -72,12 +72,13 @@ resource "azurerm_virtual_machine_scale_set" "example" {
 }
 
 data "azurerm_virtual_machine_scale_set" "example" {
+  count              = length([for id in azurerm_virtual_machine_scale_set.example.id : id])
   name                = azurerm_virtual_machine_scale_set.example.name
   resource_group_name = azurerm_virtual_machine_scale_set.example.resource_group_name
 }
 
 locals {
-  current_capacity  = data.azurerm_virtual_machine_scale_set.example.sku[0].capacity
+  current_capacity  = length(data.azurerm_virtual_machine_scale_set.example) > 0 ? data.azurerm_virtual_machine_scale_set.example[0].sku[0].capacity : 0
   should_scale_down = var.desired_capacity < local.current_capacity
 }
 
