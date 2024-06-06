@@ -78,7 +78,7 @@ data "azurerm_virtual_machine_scale_set" "example" {
 }
 
 locals {
-  current_capacity  = length(data.azurerm_virtual_machine_scale_set.example) > 0 ? data.azurerm_virtual_machine_scale_set.example[0].sku[0].capacity : 0
+  current_capacity  = try(data.azurerm_virtual_machine_scale_set.example.sku[0].capacity, 0)
   should_scale_down = var.desired_capacity < local.current_capacity
 }
 
