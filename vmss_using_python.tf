@@ -78,7 +78,7 @@ data "azurerm_virtual_machine_scale_set" "example" {
 
 locals {
   vmss_exists      = length(try(data.azurerm_virtual_machine_scale_set.example.id, [])) > 0
-  current_capacity = local.vmss_exists ? azurerm_virtual_machine_scale_set.example.sku[0].capacity : 0
+  current_capacity = local.vmss_exists ? azurerm_virtual_machine_scale_set.example.capacity : 0
   should_scale_down = var.desired_capacity < local.current_capacity
 }
 
