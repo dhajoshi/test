@@ -71,15 +71,14 @@ resource "azurerm_virtual_machine_scale_set" "example" {
   }
 }
 
-#data "azurerm_virtual_machine_scale_set" "example" {
-#  name                = azurerm_virtual_machine_scale_set.example.name
-#  resource_group_name = azurerm_virtual_machine_scale_set.example.resource_group_name
-#}
+data "azurerm_virtual_machine_scale_set" "example" {
+  name                = azurerm_virtual_machine_scale_set.example.name
+  resource_group_name = azurerm_virtual_machine_scale_set.example.resource_group_name
+  depends_on = [azurerm_virtual_machine_scale_set.example]
+}
 
 locals {
- # vmss_exists      = length(try(data.azurerm_virtual_machine_scale_set.example.id, [])) > 0
- # current_capacity = local.vmss_exists ? azurerm_virtual_machine_scale_set.example.capacity : 0
- current_capacity = try(azurerm_virtual_machine_scale_set.example.capacity, 0)
+ current_capacity =  length(coalesce(data.azurerm_virtual_machine_scale_set.example.instances, []))
  should_scale_down = var.desired_capacity < local.current_capacity
 }
 
