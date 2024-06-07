@@ -1,24 +1,29 @@
 import os
 import sys
-from azure.identity import DefaultAzureCredential
+from azure.identity import ClientSecretCredential
 from azure.mgmt.compute import ComputeManagementClient
 
-# Read input parameters
-resource_group_name = sys.argv[1]
-vmss_name = sys.argv[2]
-instance_id = sys.argv[3]
+def remove_vm_instance(subscription_id, resource_group_name, scale_set_name, instance_id):
+    tenant_id = os.environ['AZURE_TENANT_ID']
+    client_id = os.environ['AZURE_CLIENT_ID']
+    client_secret = os.environ['AZURE_CLIENT_SECRET']
+    
+    credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
+    compute_client = ComputeManagementClient(credential, subscription_id)
 
-# Authenticate
-credential = DefaultAzureCredential()
-subscription_id = os.environ["AZURE_SUBSCRIPTION_ID"]
+    # Deleting the specific instance from the VM Scale Set
+    async_vm_delete = compute_client.virtual_machine_scale_set_vms.begin_delete(
+        resource_group_name,
+        scale_set_name,
+        instance_id
+    )
+    async_vm_delete.result()
+    print(f"VM instance {instance_id} deleted from scale set {scale_set_name}")
 
-compute_client = ComputeManagementClient(credential, subscription_id)
+if __name__ == "__main__":
+    subscription_id = os.environ['AZURE_SUBSCRIPTION_ID']
+    resource_group_name = sys.argv[1]
+    scale_set_name = sys.argv[2]
+    instance_id = sys.argv[3]
 
-# Delete the VM instance from the VM scale set
-compute_client.virtual_machine_scale_set_vms.delete(
-    resource_group_name=resource_group_name,
-    vm_scale_set_name=vmss_name,
-    instance_id=instance_id
-)
-
-print(f"Instance {instance_id} from VM Scale Set {vmss_name} in Resource Group {resource_group_name} has been deleted.")
+    remove_vm_instance(subscription_id, resource_group_name, scale_set_name, instance_id)
