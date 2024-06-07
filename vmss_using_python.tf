@@ -22,7 +22,7 @@ resource "azurerm_subnet" "example" {
   name                 = "internal"
   resource_group_name  = azurerm_resource_group.example.name
   virtual_network_name = azurerm_virtual_network.example.name
-  address_prefixes     = ["10.0.2.0/24"]
+  address_prefixes     = ["10.0.1.0/24"]
 }
 
 resource "azurerm_virtual_machine_scale_set" "example" {
@@ -74,26 +74,47 @@ resource "azurerm_virtual_machine_scale_set" "example" {
 data "azurerm_virtual_machine_scale_set" "example" {
   name                = azurerm_virtual_machine_scale_set.example.name
   resource_group_name = azurerm_virtual_machine_scale_set.example.resource_group_name
-  depends_on = [azurerm_virtual_machine_scale_set.example]
 }
 
 locals {
- current_capacity =  length(coalesce(data.azurerm_virtual_machine_scale_set.example.instances, []))
- should_scale_down = var.desired_capacity < local.current_capacity
+  vmss_exists       = length(try(data.azurerm_virtual_machine_scale_set.example.id, [])) > 0
+  current_capacity  = local.vmss_exists ? azurerm_virtual_machine_scale_set.example.sku[0].capacity : 0
+  should_scale_down = var.desired_capacity < local.current_capacity
 }
 
-resource "null_resource" "remove_instance" {
-  count = local.should_scale_down ? 1 : 0
+resource "null_resource" "fetch_instance_ids" {
+  count = local.vmss_exists ? 1 : 0
 
   provisioner "local-exec" {
     command = <<EOT
-      python3 remove_vm_instance.py ${azurerm_resource_group.example.name} ${azurerm_virtual_machine_scale_set.example.name} 1
+      az vmss list-instances --resource-group ${azurerm_resource_group.example.name} --name ${azurerm_virtual_machine_scale_set.example.name} --query "[].{instanceId:instanceId}" -o tsv > instance_ids.txt
+    EOT
+  }
+
+  depends_on = [
+    azurerm_virtual_machine_scale_set.example
+  ]
+}
+
+resource "null_resource" "remove_instance" {
+  count = local.should_scale_down && local.vmss_exists ? 1 : 0
+
+  provisioner "local-exec" {
+    command = <<EOT
+      instance_id=$(head -n 1 instance_ids.txt)
+      python3 remove_vm_instance.py ${azurerm_resource_group.example.name} ${azurerm_virtual_machine_scale_set.example.name} $instance_id
     EOT
 
     environment = {
-      AZURE_SUBSCRIPTION_ID = "<your-subscription-id>"
+      AZURE_SUBSCRIPTION_ID = "your-subscription-id"
+      AZURE_TENANT_ID       = "your-tenant-id"
+      AZURE_CLIENT_ID       = "your-client-id"
+      AZURE_CLIENT_SECRET   = "your-client-secret"
     }
   }
 
-  depends_on = [azurerm_virtual_machine_scale_set.example]
+  depends_on = [
+    azurerm_virtual_machine_scale_set.example,
+    null_resource.fetch_instance_ids
+  ]
 }
